@@ -111,14 +111,12 @@ function SectionFiltres({ taches, filtre, setFiltre }) {
 }
 
 function Tasks() {
-  // Tasks assigned to Taher from other projects (read-only, no delete)
   const [tachesAssignees, setTachesAssignees] = useState([
     { id: 1, titre: 'Analyse des besoins', projet: 'Fil Rouge', priorite: 'Haute', statut: 'Terminé', assignee: 'Taher' },
     { id: 2, titre: 'Maquettes UI/UX', projet: 'Fil Rouge', priorite: 'Haute', statut: 'En cours', assignee: 'Taher' },
     { id: 3, titre: 'Développement API REST', projet: 'Fil Rouge', priorite: 'Haute', statut: 'À faire', assignee: 'Taher' },
   ])
 
-  // Tasks Taher creates for his personal project
   const [tachesPersonnelles, setTachesPersonnelles] = useState([
     { id: 101, titre: 'Collecte du dataset', projet: 'Projet IA', priorite: 'Moyenne', statut: 'À faire', assignee: 'Moi' },
     { id: 102, titre: 'Entraînement du modèle', projet: 'Projet IA', priorite: 'Basse', statut: 'À faire', assignee: 'Moi' },
@@ -173,24 +171,9 @@ function Tasks() {
 
   return (
     <div style={styles.container}>
-
-{/* NAVBAR */}
-<div style={styles.navbar}>
-  <span style={styles.navTitle}>📋 Fil Rouge</span>
-  <div style={styles.navLinks}>
-    <div style={styles.accountBadge}>T</div>
-    <span style={styles.accountName}>Taher</span>
-    <a href="/projects" style={styles.navLink}>Projets</a>
-    <a href="/tasks" style={styles.navLink}>Tâches</a>
-    <a href="/assign" style={styles.navLink}>Affectation</a>
-    <a href="/" style={styles.navLinkLogout}>Déconnexion</a>
-  </div>
-</div>
-
-      {/* CONTENU */}
       <div style={styles.content}>
 
-        {/* ── SECTION 1 : TÂCHES ASSIGNÉES ── */}
+        {/* SECTION 1 : TÂCHES ASSIGNÉES */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -220,10 +203,9 @@ function Tasks() {
           </div>
         </div>
 
-        {/* ── DIVIDER ── */}
         <div style={styles.divider} />
 
-        {/* ── SECTION 2 : MON PROJET PERSONNEL ── */}
+        {/* SECTION 2 : MON PROJET PERSONNEL */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -294,33 +276,6 @@ const styles = {
   container: {
     minHeight: '100vh',
     backgroundColor: '#f0f4f8',
-  },
-  navbar: {
-    backgroundColor: '#1F4E79',
-    padding: '16px 32px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  navTitle: {
-    color: 'white',
-    fontSize: '20px',
-    fontWeight: 'bold',
-  },
-  navLinks: {
-    display: 'flex',
-    gap: '24px',
-    alignItems: 'center',
-  },
-  navLink: {
-    color: 'white',
-    textDecoration: 'none',
-    fontSize: '15px',
-  },
-  navLinkLogout: {
-    color: '#FFEB9C',
-    textDecoration: 'none',
-    fontSize: '15px',
   },
   content: {
     maxWidth: '900px',
@@ -490,26 +445,7 @@ const styles = {
     flexShrink: 0,
     padding: '4px 8px',
     borderRadius: '6px',
-  },
-  accountBadge: {
-  width: '32px',
-  height: '32px',
-  borderRadius: '50%',
-  backgroundColor: '#2E75B6',
-  color: 'white',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '14px',
-  fontWeight: 'bold',
-  flexShrink: 0,
-},
-accountName: {
-  color: 'white',
-  fontSize: '15px',
-  fontWeight: '500',
-  marginRight: '8px',
-},
+  }
 }
 
 export default Tasks

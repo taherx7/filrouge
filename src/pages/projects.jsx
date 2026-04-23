@@ -74,76 +74,59 @@ function Projects() {
 
   return (
     <div style={styles.container}>
-
-      {/* NAVBAR */}
-      <div style={styles.navbar}>
-        <span style={styles.navTitle}>📋 Fil Rouge</span>
-
-        {/* INBOX BELL */}
-        <div style={{ position: 'relative' }}>
-          <button style={styles.bellBtn} onClick={() => setInboxOpen(!inboxOpen)}>
-            🔔
-            {pendingCount > 0 && (
-              <span style={styles.bellBadge}>{pendingCount}</span>
-            )}
-          </button>
-
-          {inboxOpen && (
-            <div style={styles.inboxDropdown}>
-              <div style={styles.inboxHeader}>Invitations reçues</div>
-              {inbox.length === 0 && (
-                <div style={styles.inboxEmpty}>Aucune invitation.</div>
-              )}
-              {inbox.map(inv => (
-                <div key={inv.id} style={styles.inboxItem}>
-                  <div style={styles.inboxMeta}>
-                    <span style={styles.inboxDe}>De : {inv.de}</span>
-                    <span style={styles.inboxProjet}>📁 {inv.projet}</span>
-                  </div>
-                  {inv.statut === 'en attente' ? (
-                    <div style={styles.inboxActions}>
-                      <button
-                        style={{ ...styles.inboxBtn, backgroundColor: '#C6EFCE', color: '#276221' }}
-                        onClick={() => repondreInbox(inv.id, 'acceptée')}
-                      >
-                        Accepter
-                      </button>
-                      <button
-                        style={{ ...styles.inboxBtn, backgroundColor: '#FFE0E0', color: '#B91C1C' }}
-                        onClick={() => repondreInbox(inv.id, 'refusée')}
-                      >
-                        Refuser
-                      </button>
-                    </div>
-                  ) : (
-                    <span style={{
-                      ...styles.inboxStatutBadge,
-                      backgroundColor: invitStatutStyle(inv.statut).bg,
-                      color: invitStatutStyle(inv.statut).text,
-                    }}>
-                      {inv.statut}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+      {/* INBOX TRIGGER (Since navbar is gone, keeping this accessible within the content or as a floating element) */}
+      <div style={styles.inboxWrapper}>
+        <button style={styles.bellBtn} onClick={() => setInboxOpen(!inboxOpen)}>
+          🔔 Invitations
+          {pendingCount > 0 && (
+            <span style={styles.bellBadge}>{pendingCount}</span>
           )}
-        </div>
+        </button>
 
-        <div style={styles.navLinks}>
-          <div style={styles.accountBadge}>T</div>
-          <span style={styles.accountName}>Taher</span>
-          <a href="/projects" style={styles.navLink}>Projets</a>
-          <a href="/tasks" style={styles.navLink}>Tâches</a>
-          <a href="/assign" style={styles.navLink}>Affectation</a>
-          <a href="/" style={styles.navLinkLogout}>Déconnexion</a>
-        </div>
+        {inboxOpen && (
+          <div style={styles.inboxDropdown}>
+            <div style={styles.inboxHeader}>Invitations reçues</div>
+            {inbox.length === 0 && (
+              <div style={styles.inboxEmpty}>Aucune invitation.</div>
+            )}
+            {inbox.map(inv => (
+              <div key={inv.id} style={styles.inboxItem}>
+                <div style={styles.inboxMeta}>
+                  <span style={styles.inboxDe}>De : {inv.de}</span>
+                  <span style={styles.inboxProjet}>📁 {inv.projet}</span>
+                </div>
+                {inv.statut === 'en attente' ? (
+                  <div style={styles.inboxActions}>
+                    <button
+                      style={{ ...styles.inboxBtn, backgroundColor: '#C6EFCE', color: '#276221' }}
+                      onClick={() => repondreInbox(inv.id, 'acceptée')}
+                    >
+                      Accepter
+                    </button>
+                    <button
+                      style={{ ...styles.inboxBtn, backgroundColor: '#FFE0E0', color: '#B91C1C' }}
+                      onClick={() => repondreInbox(inv.id, 'refusée')}
+                    >
+                      Refuser
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{
+                    ...styles.inboxStatutBadge,
+                    backgroundColor: invitStatutStyle(inv.statut).bg,
+                    color: invitStatutStyle(inv.statut).text,
+                  }}>
+                    {inv.statut}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* CONTENU */}
       <div style={styles.content}>
-
-        {/* ── SECTION 1 : MES PROJETS ── */}
+        {/* SECTION 1 : MES PROJETS */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -184,10 +167,9 @@ function Projects() {
           )}
         </div>
 
-        {/* ── DIVIDER ── */}
         <div style={styles.divider} />
 
-        {/* ── SECTION 2 : PROJETS COLLABORÉS ── */}
+        {/* SECTION 2 : PROJETS COLLABORÉS */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -204,43 +186,33 @@ function Projects() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   )
 }
 
 const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#f0f4f8' },
-  navbar: {
-    backgroundColor: '#1F4E79', padding: '16px 32px',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    position: 'relative',
+  container: { minHeight: '100vh', backgroundColor: '#f0f4f8', padding: '20px' },
+  inboxWrapper: { 
+    maxWidth: '900px', 
+    margin: '0 auto 20px auto', 
+    display: 'flex', 
+    justifyContent: 'flex-end',
+    position: 'relative' 
   },
-  navTitle: { color: 'white', fontSize: '20px', fontWeight: 'bold' },
-  navLinks: { display: 'flex', gap: '24px', alignItems: 'center' },
-  navLink: { color: 'white', textDecoration: 'none', fontSize: '15px' },
-  navLinkLogout: { color: '#FFEB9C', textDecoration: 'none', fontSize: '15px' },
-  accountBadge: {
-    width: '32px', height: '32px', borderRadius: '50%',
-    backgroundColor: '#2E75B6', color: 'white',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '14px', fontWeight: 'bold', flexShrink: 0,
-  },
-  accountName: { color: 'white', fontSize: '15px', fontWeight: '500', marginRight: '8px' },
   bellBtn: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    fontSize: '20px', position: 'relative', padding: '4px 8px', lineHeight: 1,
+    backgroundColor: 'white', border: '1px solid #ddd', cursor: 'pointer',
+    fontSize: '14px', position: 'relative', padding: '8px 16px', borderRadius: '8px',
+    display: 'flex', alignItems: 'center', gap: '8px', color: '#1F4E79', fontWeight: 'bold'
   },
   bellBadge: {
-    position: 'absolute', top: '-2px', right: '-2px',
     backgroundColor: '#B91C1C', color: 'white',
     fontSize: '10px', fontWeight: 'bold',
-    width: '16px', height: '16px', borderRadius: '50%',
+    width: '18px', height: '18px', borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   inboxDropdown: {
-    position: 'absolute', top: '52px', left: '0',
+    position: 'absolute', top: '45px', right: '0',
     backgroundColor: 'white', borderRadius: '12px',
     boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
     width: '320px', zIndex: 100,
@@ -267,7 +239,7 @@ const styles = {
     padding: '4px 12px', borderRadius: '20px',
     fontSize: '12px', fontWeight: '700', alignSelf: 'flex-start',
   },
-  content: { maxWidth: '900px', margin: '0 auto', padding: '32px 16px' },
+  content: { maxWidth: '900px', margin: '0 auto' },
   section: { marginBottom: '8px' },
   sectionHeader: {
     display: 'flex', justifyContent: 'space-between',
