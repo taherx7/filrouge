@@ -8,17 +8,51 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-
-// 🔹 GET all projects
-app.get("/projects", (req, res) => {
-  db.query("SELECT * FROM projects", (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json(err);
+// POST task
+app.post('/tasks', (req, res) => {
+  const { title, project_id, priority, assigned_to } = req.body
+  db.query(
+    "INSERT INTO tasks (title, project_id, priority, status, assigned_to) VALUES (?, ?, ?, 'À faire', ?)",
+    [title, project_id, priority, assigned_to],
+    (err, result) => {
+      if (err) return res.status(500).json(err)
+      res.json({ id: result.insertId, title, project_id, priority, status: 'À faire', assigned_to })
     }
-    res.json(results);
-  });
-});
+  )
+})
+
+// PATCH task status
+app.patch('/tasks/:id', (req, res) => {
+  const { status } = req.body
+  db.query("UPDATE tasks SET status = ? WHERE id = ?", [status, req.params.id], (err) => {
+    if (err) return res.status(500).json(err)
+    res.json({ success: true })
+  })
+})
+
+// DELETE task
+app.delete('/tasks/:id', (req, res) => {
+  db.query("DELETE FROM tasks WHERE id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json(err)
+    res.json({ success: true })
+  })
+})
+
+
+// GET projects by proprietaire (optional filter)
+app.get("/projects", (req, res) => {
+  const { proprietaire } = req.query
+  let sql = "SELECT * FROM projects"
+  const params = []
+  if (proprietaire) {
+    sql += " WHERE proprietaire = ?"
+    params.push(proprietaire)
+  }
+  db.query(sql, params, (err, results) => {
+    if (err) return res.status(500).json(err)
+    res.json(results)
+  })
+})
 
 
 // get tasks
@@ -78,6 +112,21 @@ app.get('/users', (req, res) => {
     if (err) return res.status(500).json(err)
     res.json(results)
   })
+})
+
+//login 
+
+app.post('/login', (req, res) => {
+  const { email, password } = req.body
+  db.query(
+    "SELECT id, name, email FROM users WHERE email = ? AND password = ?",
+    [email, password],
+    (err, results) => {
+      if (err) return res.status(500).json(err)
+      if (results.length === 0) return res.status(401).json({ message: 'Email ou mot de passe incorrect' })
+      res.json(results[0])
+    }
+  )
 })
 
 

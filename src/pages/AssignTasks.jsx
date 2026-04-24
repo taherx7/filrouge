@@ -1,9 +1,8 @@
-import { useState } from 'react'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
-const CURRENT_USER_ID = 1
-
-
+const user = JSON.parse(localStorage.getItem('user'))
+const CURRENT_USER = user?.name
+const CURRENT_USER_ID = user?.id
 
 const membres = [
   { id: 1, nom: 'Taher', initiales: 'TH', couleur: '#1F4E79' },
@@ -11,63 +10,50 @@ const membres = [
   { id: 3, nom: 'Ali', initiales: 'AL', couleur: '#7B3F00' },
 ]
 
-// ownerId: who created the project
-const projetsInfo = {
-  'Fil Rouge': { ownerId: 2 },   // created by Mohsen — Taher is a collaborator
-  'Projet IA': { ownerId: 1 },   // created by Taher — he is the owner
-}
-
-const initialTaches = [
-  { id: 1, titre: 'Maquettes UI/UX', projet: 'Fil Rouge', priorite: 'Haute', statut: 'En cours', assigneeId: 1 },
-  { id: 2, titre: 'Développement API REST', projet: 'Fil Rouge', priorite: 'Haute', statut: 'À faire', assigneeId: null },
-  { id: 3, titre: 'Rédaction user stories', projet: 'Fil Rouge', priorite: 'Moyenne', statut: 'Terminé', assigneeId: 2 },
-  { id: 4, titre: 'Collecte du dataset', projet: 'Projet IA', priorite: 'Moyenne', statut: 'À faire', assigneeId: null },
-  { id: 5, titre: 'Entraînement du modèle', projet: 'Projet IA', priorite: 'Basse', statut: 'À faire', assigneeId: 3 },
-  { id: 6, titre: 'Tests unitaires', projet: 'Fil Rouge', priorite: 'Haute', statut: 'À faire', assigneeId: null },
-]
-
 function AssignTasks() {
   const [taches, setTaches] = useState([])
+  const [mesProjetsNoms, setMesProjetsNoms] = useState(new Set())
+  const [projets, setProjets] = useState([])
   const [filtreProjet, setFiltreProjet] = useState('Tous')
   const [filtreMembre, setFiltreMembre] = useState('Tous')
   const [toast, setToast] = useState(null)
 
   const [emailInvite, setEmailInvite] = useState('')
-  const [projetInvite, setProjetInvite] = useState('Fil Rouge')
-  const [invitations, setInvitations] = useState([
-    { id: 1, email: 'sara@example.com', projet: 'Fil Rouge', statut: 'en attente' },
-  ])
+  const [projetInvite, setProjetInvite] = useState('')
+  const [invitations, setInvitations] = useState([])
 
-  const [projets, setProjets] = useState([])
+  useEffect(() => {
+    fetch('http://localhost:5000/tasks')
+      .then(res => res.json())
+      .then(data => {
+        const formattedTasks = data.map(t => ({
+          id: t.id,
+          titre: t.title,
+          projet: t.projet,
+          priorite: t.priority,
+          statut: t.status,
+          assigneeId: membres.find(m => m.nom === t.assigned_to)?.id || null
+        }))
+        setTaches(formattedTasks)
+      })
+
+    fetch('http://localhost:5000/projects')
+      .then(res => res.json())
+      .then(data => {
+        const noms = data.map(p => p.nom)
+        setProjets(['Tous', ...noms])
+        if (noms.length > 0) setProjetInvite(noms[0])
+      })
+
+    fetch(`http://localhost:5000/projects?proprietaire=${CURRENT_USER}`)
+      .then(res => res.json())
+      .then(data => {
+        setMesProjetsNoms(new Set(data.map(p => p.nom)))
+      })
+  }, [])
+
+  const isOwner = (projetNom) => mesProjetsNoms.has(projetNom)
   const projetsDisponibles = projets.filter(p => p !== 'Tous')
-
-
-useEffect(() => {
-  // LOAD TASKS
-  fetch('http://localhost:5000/tasks')
-    .then(res => res.json())
-    .then(data => {
-      const formattedTasks = data.map(t => ({
-        id: t.id,
-        titre: t.title,
-        projet: t.projet,
-        priorite: t.priority,
-        statut: t.status,
-        assigneeId:
-          membres.find(m => m.nom === t.assigned_to)?.id || null
-      }))
-      setTaches(formattedTasks)
-    })
-
-  // LOAD PROJECTS
-  fetch('http://localhost:5000/projects')
-    .then(res => res.json())
-    .then(data => {
-      const noms = data.map(p => p.nom)
-      setProjets(['Tous', ...noms])
-    })
-
-}, [])
 
   const showToast = (msg) => {
     setToast(msg)
@@ -84,65 +70,50 @@ useEffect(() => {
     return okProjet && okMembre
   })
 
-const assigner = (tacheId, membreId) => {
-  const membre = membres.find(m => m.id === membreId)
+  const assigner = (tacheId, membreId) => {
+    const membre = membres.find(m => m.id === membreId)
+    fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignee: membre.nom })
+    }).then(() => {
+      setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: membreId } : t))
+      showToast(`"${membre.nom}" assigné`)
+    })
+  }
 
-  fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ assignee: membre.nom })
-  }).then(() => {
-    setTaches(taches.map(t =>
-      t.id === tacheId ? { ...t, assigneeId: membreId } : t
-    ))
-    showToast(`"${membre.nom}" assigné`)
-  })
-}
+  const meLAssigner = (tacheId) => {
+    const me = membres.find(m => m.id === CURRENT_USER_ID)
+    fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignee: me.nom })
+    }).then(() => {
+      setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: CURRENT_USER_ID } : t))
+      showToast('Assignée à vous')
+    })
+  }
 
-const meLAssigner = (tacheId) => {
-  const me = membres.find(m => m.id === CURRENT_USER_ID)
-
-  fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ assignee: me.nom })
-  }).then(() => {
-    setTaches(taches.map(t =>
-      t.id === tacheId ? { ...t, assigneeId: CURRENT_USER_ID } : t
-    ))
-    showToast('Assignée à vous')
-  })
-}
-
-const desassigner = (tacheId) => {
-  fetch(`http://localhost:5000/tasks/${tacheId}/unassign`, {
-    method: 'PUT'
-  }).then(() => {
-    setTaches(taches.map(t =>
-      t.id === tacheId ? { ...t, assigneeId: null } : t
-    ))
-  })
-}
+  const desassigner = (tacheId) => {
+    fetch(`http://localhost:5000/tasks/${tacheId}/unassign`, { method: 'PUT' })
+      .then(() => {
+        setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: null } : t))
+      })
+  }
 
   const getMembre = (id) => membres.find(m => m.id === id)
 
-  const isOwner = (projetNom) => projetsInfo[projetNom]?.ownerId === CURRENT_USER_ID
-
   const handleInviter = (e) => {
-  e.preventDefault()
-
-  fetch('http://localhost:5000/invitations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: emailInvite,
-      projet: projetInvite
+    e.preventDefault()
+    fetch('http://localhost:5000/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInvite, projet: projetInvite })
+    }).then(() => {
+      showToast(`Invitation envoyée à ${emailInvite}`)
+      setEmailInvite('')
     })
-  }).then(() => {
-    showToast(`Invitation envoyée à ${emailInvite}`)
-    setEmailInvite('')
-  })
-}
+  }
 
   const annulerInvitation = (id) => setInvitations(invitations.filter(i => i.id !== id))
 
@@ -278,10 +249,7 @@ const desassigner = (tacheId) => {
                 const isMe = tache.assigneeId === CURRENT_USER_ID
 
                 return (
-                  <tr key={tache.id} style={{
-                    ...styles.tr,
-                    borderLeft: `3px solid ${owner ? '#2E75B6' : '#7B3F00'}`,
-                  }}>
+                  <tr key={tache.id} style={{ ...styles.tr, borderLeft: `3px solid ${owner ? '#2E75B6' : '#7B3F00'}` }}>
                     <td style={styles.td}>
                       <span style={{ color: '#1F4E79', fontWeight: '600', fontSize: '14px' }}>{tache.titre}</span>
                     </td>
@@ -306,7 +274,6 @@ const desassigner = (tacheId) => {
                     </td>
                     <td style={styles.td}>
                       {owner ? (
-                        // OWNER: full dropdown to assign anyone
                         <select
                           style={styles.selectAssign}
                           value={tache.assigneeId || ''}
@@ -322,13 +289,10 @@ const desassigner = (tacheId) => {
                           ))}
                         </select>
                       ) : (
-                        // COLLABORATOR: can only take the task for themselves
                         isMe ? (
                           <div style={styles.assignedToMeCell}>
                             <span style={styles.assignedToMeLabel}>✓ Assignée à moi</span>
-                            <button style={styles.desassignerBtn} onClick={() => desassigner(tache.id)}>
-                              Libérer
-                            </button>
+                            <button style={styles.desassignerBtn} onClick={() => desassigner(tache.id)}>Libérer</button>
                           </div>
                         ) : tache.assigneeId !== null ? (
                           <span style={styles.assignedOther}>Assignée à {getMembre(tache.assigneeId)?.nom}</span>
@@ -364,122 +328,53 @@ const styles = {
   content: { maxWidth: '960px', margin: '0 auto', padding: '32px 16px' },
   pageHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' },
   title: { color: '#1F4E79', margin: 0 },
-  alertBadge: {
-    backgroundColor: '#FFE0E0', color: '#B91C1C',
-    padding: '5px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '700',
-  },
-  chargeGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '12px', marginBottom: '24px',
-  },
-  chargeCard: {
-    backgroundColor: 'white', borderRadius: '12px', padding: '16px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-    display: 'flex', alignItems: 'center', gap: '12px',
-  },
-  avatar: {
-    width: '38px', height: '38px', borderRadius: '50%',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: 'white', fontWeight: 'bold', fontSize: '13px', flexShrink: 0,
-  },
+  alertBadge: { backgroundColor: '#FFE0E0', color: '#B91C1C', padding: '5px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '700' },
+  chargeGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' },
+  chargeCard: { backgroundColor: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: '12px' },
+  avatar: { width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 },
   chargeName: { fontWeight: '600', fontSize: '14px', color: '#1F4E79' },
   chargeCount: { fontSize: '12px', color: '#777', marginBottom: '4px' },
   chargebar: { width: '100%', height: '5px', backgroundColor: '#eee', borderRadius: '4px', overflow: 'hidden' },
   chargebarFill: { height: '100%', borderRadius: '4px', transition: 'width 0.3s' },
-  inviteSection: {
-    backgroundColor: 'white', borderRadius: '12px', padding: '24px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.07)', marginBottom: '24px',
-  },
+  inviteSection: { backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', marginBottom: '24px' },
   inviteSectionHeader: { marginBottom: '16px' },
   inviteTitle: { color: '#1F4E79', margin: '0 0 4px 0', fontSize: '17px', fontWeight: '700' },
   inviteSub: { margin: 0, fontSize: '13px', color: '#888' },
   inviteForm: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' },
-  inviteInput: {
-    flex: 2, minWidth: '200px', padding: '10px 14px',
-    borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px',
-  },
-  inviteSelect: {
-    flex: 1, minWidth: '140px', padding: '10px 14px',
-    borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px',
-    backgroundColor: 'white', color: '#1F4E79',
-  },
-  inviteBtn: {
-    backgroundColor: '#1F4E79', color: 'white', border: 'none',
-    padding: '10px 20px', borderRadius: '8px', cursor: 'pointer',
-    fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap',
-  },
+  inviteInput: { flex: 2, minWidth: '200px', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' },
+  inviteSelect: { flex: 1, minWidth: '140px', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', backgroundColor: 'white', color: '#1F4E79' },
+  inviteBtn: { backgroundColor: '#1F4E79', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' },
   inviteList: { borderTop: '1px solid #eee', paddingTop: '16px' },
   inviteListTitle: { fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' },
-  inviteRow: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '10px 0', borderBottom: '1px solid #f5f5f5', flexWrap: 'wrap',
-  },
+  inviteRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f5f5f5', flexWrap: 'wrap' },
   inviteEmail: { fontSize: '14px', color: '#333', flex: 1, minWidth: '160px' },
   inviteProjetTag: { fontSize: '13px', color: '#777' },
   inviteStatut: { padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' },
-  annulerBtn: {
-    background: 'none', border: '1px solid #ddd', borderRadius: '8px',
-    padding: '4px 12px', fontSize: '12px', color: '#999', cursor: 'pointer',
-  },
-  legendeRow: {
-    display: 'flex', gap: '24px', flexWrap: 'wrap',
-    marginBottom: '16px', fontSize: '13px', color: '#555',
-  },
+  annulerBtn: { background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', color: '#999', cursor: 'pointer' },
+  legendeRow: { display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '16px', fontSize: '13px', color: '#555' },
   legendeItem: { display: 'flex', alignItems: 'center', gap: '8px' },
   legendeDot: { width: '10px', height: '10px', borderRadius: '50%', display: 'inline-block', flexShrink: 0 },
   filtresRow: { display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' },
   filtreGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
   filtreLabel: { fontSize: '12px', color: '#777', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  select: {
-    padding: '8px 14px', borderRadius: '8px', border: '1px solid #ddd',
-    fontSize: '14px', backgroundColor: 'white', cursor: 'pointer', color: '#1F4E79',
-  },
-  tableWrapper: {
-    backgroundColor: 'white', borderRadius: '12px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.07)', overflow: 'hidden',
-  },
+  select: { padding: '8px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', backgroundColor: 'white', cursor: 'pointer', color: '#1F4E79' },
+  tableWrapper: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse' },
   thead: { backgroundColor: '#f7f9fc' },
-  th: {
-    padding: '13px 16px', textAlign: 'left', fontSize: '12px',
-    color: '#777', fontWeight: '700', textTransform: 'uppercase',
-    letterSpacing: '0.05em', borderBottom: '1px solid #eee',
-  },
+  th: { padding: '13px 16px', textAlign: 'left', fontSize: '12px', color: '#777', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #eee' },
   tr: { borderBottom: '1px solid #f0f0f0' },
   td: { padding: '14px 16px', verticalAlign: 'middle' },
   badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' },
   membreCell: { display: 'flex', alignItems: 'center', gap: '8px' },
-  avatarSm: {
-    width: '28px', height: '28px', borderRadius: '50%',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: 'white', fontWeight: 'bold', fontSize: '11px', flexShrink: 0,
-  },
+  avatarSm: { width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 },
   nonAssigne: { color: '#aaa', fontSize: '13px', fontStyle: 'italic' },
-  selectAssign: {
-    padding: '7px 12px', borderRadius: '8px', border: '1px solid #ddd',
-    fontSize: '13px', backgroundColor: '#f7f9fc', cursor: 'pointer',
-    color: '#1F4E79', fontWeight: '600',
-  },
-  meLAssignerBtn: {
-    backgroundColor: '#EEF4FB', color: '#1F4E79',
-    border: '1.5px solid #2E75B6', borderRadius: '8px',
-    padding: '6px 14px', fontSize: '13px', fontWeight: '700',
-    cursor: 'pointer', whiteSpace: 'nowrap',
-  },
+  selectAssign: { padding: '7px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', backgroundColor: '#f7f9fc', cursor: 'pointer', color: '#1F4E79', fontWeight: '600' },
+  meLAssignerBtn: { backgroundColor: '#EEF4FB', color: '#1F4E79', border: '1.5px solid #2E75B6', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
   assignedToMeCell: { display: 'flex', alignItems: 'center', gap: '8px' },
   assignedToMeLabel: { fontSize: '13px', color: '#276221', fontWeight: '600' },
-  desassignerBtn: {
-    background: 'none', border: '1px solid #ddd', borderRadius: '8px',
-    padding: '4px 10px', fontSize: '12px', color: '#999', cursor: 'pointer',
-  },
+  desassignerBtn: { background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', color: '#999', cursor: 'pointer' },
   assignedOther: { fontSize: '13px', color: '#aaa', fontStyle: 'italic' },
-  toast: {
-    position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
-    backgroundColor: '#1F4E79', color: 'white',
-    padding: '12px 28px', borderRadius: '24px',
-    fontSize: '14px', fontWeight: '600',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999,
-  },
+  toast: { position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1F4E79', color: 'white', padding: '12px 28px', borderRadius: '24px', fontSize: '14px', fontWeight: '600', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 },
 }
 
 export default AssignTasks

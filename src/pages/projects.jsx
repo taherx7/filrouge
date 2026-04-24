@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 
-const currentUser = "taher"
+const user = JSON.parse(localStorage.getItem('user'))
+const currentUser = user?.name
 
 function Projects() {
   const [projets, setProjets] = useState([])
@@ -19,8 +20,8 @@ function Projects() {
       .then(data => setProjets(data))
   }, [])
 
-  const mesProjets = projets.filter(p => p.proprietaire === currentUser)
-  const projetsCollabores = projets.filter(p => p.proprietaire !== currentUser)
+  const mesProjets = projets.filter(p => p.proprietaire?.toLowerCase() === currentUser?.toLowerCase())
+const projetsCollabores = projets.filter(p => p.proprietaire?.toLowerCase() !== currentUser?.toLowerCase())
 
   const pendingCount = inbox.filter(i => i.statut === 'en attente').length
 

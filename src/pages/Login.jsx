@@ -4,10 +4,23 @@ function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log('Email:', email, 'Password:', password)
-  }
+const handleSubmit = (e) => {
+  e.preventDefault()
+  fetch('http://localhost:5000/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.message) {
+        alert(data.message)
+      } else {
+        localStorage.setItem('user', JSON.stringify(data))
+        window.location.href = '/projects'
+      }
+    })
+}
 
   return (
     <div style={styles.container}>

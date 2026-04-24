@@ -1,6 +1,6 @@
 // components/Navbar.jsx
 import { useState } from "react";
-
+const user = JSON.parse(localStorage.getItem('user'))
 const styles = {
   navbar: {
     backgroundColor: '#1F4E79',
@@ -41,8 +41,8 @@ function Navbar() {
 
       {/* Right side */}
       <div style={styles.navLinks}>
-        <div style={styles.accountBadge}>T</div>
-        <span style={styles.accountName}>Taher</span>
+       <div style={styles.accountBadge}>{user?.name?.charAt(0).toUpperCase()}</div>
+<span style={styles.accountName}>{user?.name}</span>
         <a href="/projects" style={styles.navLink}>Projets</a>
         <a href="/tasks" style={styles.navLink}>Tâches</a>
         <a href="/assign" style={styles.navLink}>Affectation</a>
