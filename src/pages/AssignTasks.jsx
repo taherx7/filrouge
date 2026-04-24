@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { useEffect } from 'react'
 
 const CURRENT_USER_ID = 1
+
+
 
 const membres = [
   { id: 1, nom: 'Taher', initiales: 'TH', couleur: '#1F4E79' },
@@ -24,7 +27,7 @@ const initialTaches = [
 ]
 
 function AssignTasks() {
-  const [taches, setTaches] = useState(initialTaches)
+  const [taches, setTaches] = useState([])
   const [filtreProjet, setFiltreProjet] = useState('Tous')
   const [filtreMembre, setFiltreMembre] = useState('Tous')
   const [toast, setToast] = useState(null)
@@ -35,8 +38,36 @@ function AssignTasks() {
     { id: 1, email: 'sara@example.com', projet: 'Fil Rouge', statut: 'en attente' },
   ])
 
-  const projets = ['Tous', ...new Set(initialTaches.map(t => t.projet))]
-  const projetsDisponibles = [...new Set(initialTaches.map(t => t.projet))]
+  const [projets, setProjets] = useState([])
+  const projetsDisponibles = projets.filter(p => p !== 'Tous')
+
+
+useEffect(() => {
+  // LOAD TASKS
+  fetch('http://localhost:5000/tasks')
+    .then(res => res.json())
+    .then(data => {
+      const formattedTasks = data.map(t => ({
+        id: t.id,
+        titre: t.title,
+        projet: t.projet,
+        priorite: t.priority,
+        statut: t.status,
+        assigneeId:
+          membres.find(m => m.nom === t.assigned_to)?.id || null
+      }))
+      setTaches(formattedTasks)
+    })
+
+  // LOAD PROJECTS
+  fetch('http://localhost:5000/projects')
+    .then(res => res.json())
+    .then(data => {
+      const noms = data.map(p => p.nom)
+      setProjets(['Tous', ...noms])
+    })
+
+}, [])
 
   const showToast = (msg) => {
     setToast(msg)
@@ -53,34 +84,65 @@ function AssignTasks() {
     return okProjet && okMembre
   })
 
-  const assigner = (tacheId, membreId) => {
-    const membre = membres.find(m => m.id === membreId)
-    const tache = taches.find(t => t.id === tacheId)
-    setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: membreId } : t))
-    showToast(`"${tache.titre}" assignée à ${membre.nom}`)
-  }
+const assigner = (tacheId, membreId) => {
+  const membre = membres.find(m => m.id === membreId)
 
-  const meLAssigner = (tacheId) => {
-    const tache = taches.find(t => t.id === tacheId)
-    setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: CURRENT_USER_ID } : t))
-    showToast(`"${tache.titre}" assignée à vous`)
-  }
+  fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assignee: membre.nom })
+  }).then(() => {
+    setTaches(taches.map(t =>
+      t.id === tacheId ? { ...t, assigneeId: membreId } : t
+    ))
+    showToast(`"${membre.nom}" assigné`)
+  })
+}
 
-  const desassigner = (tacheId) => {
-    setTaches(taches.map(t => t.id === tacheId ? { ...t, assigneeId: null } : t))
-  }
+const meLAssigner = (tacheId) => {
+  const me = membres.find(m => m.id === CURRENT_USER_ID)
+
+  fetch(`http://localhost:5000/tasks/${tacheId}/assign`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assignee: me.nom })
+  }).then(() => {
+    setTaches(taches.map(t =>
+      t.id === tacheId ? { ...t, assigneeId: CURRENT_USER_ID } : t
+    ))
+    showToast('Assignée à vous')
+  })
+}
+
+const desassigner = (tacheId) => {
+  fetch(`http://localhost:5000/tasks/${tacheId}/unassign`, {
+    method: 'PUT'
+  }).then(() => {
+    setTaches(taches.map(t =>
+      t.id === tacheId ? { ...t, assigneeId: null } : t
+    ))
+  })
+}
 
   const getMembre = (id) => membres.find(m => m.id === id)
 
   const isOwner = (projetNom) => projetsInfo[projetNom]?.ownerId === CURRENT_USER_ID
 
   const handleInviter = (e) => {
-    e.preventDefault()
-    if (!emailInvite.trim()) return
-    setInvitations([...invitations, { id: Date.now(), email: emailInvite.trim(), projet: projetInvite, statut: 'en attente' }])
-    showToast(`Invitation envoyée à ${emailInvite.trim()}`)
+  e.preventDefault()
+
+  fetch('http://localhost:5000/invitations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: emailInvite,
+      projet: projetInvite
+    })
+  }).then(() => {
+    showToast(`Invitation envoyée à ${emailInvite}`)
     setEmailInvite('')
-  }
+  })
+}
 
   const annulerInvitation = (id) => setInvitations(invitations.filter(i => i.id !== id))
 
