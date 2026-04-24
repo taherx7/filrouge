@@ -1,14 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+const user = JSON.parse(localStorage.getItem('user'))
+const currentUser = user?.name
 
 function Projects() {
-  const [mesProjets, setMesProjets] = useState([
-    { id: 1, nom: 'Projet IA', description: "Modèle de classification d'images", statut: 'À faire' },
-  ])
-
-  const [projetsCollabores, setProjetsCollabores] = useState([
-    { id: 2, nom: 'Fil Rouge', description: 'Plateforme de gestion de projets étudiants', statut: 'En cours', proprietaire: 'Prof. Grichi' },
-  ])
-
+  const [projets, setProjets] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [nom, setNom] = useState('')
   const [description, setDescription] = useState('')
@@ -17,6 +13,15 @@ function Projects() {
   const [inbox, setInbox] = useState([
     { id: 1, de: 'prof@fsb.tn', projet: 'Fil Rouge', statut: 'en attente' },
   ])
+
+  useEffect(() => {
+    fetch("http://localhost:5000/projects")
+      .then(res => res.json())
+      .then(data => setProjets(data))
+  }, [])
+
+  const mesProjets = projets.filter(p => p.proprietaire?.toLowerCase() === currentUser?.toLowerCase())
+const projetsCollabores = projets.filter(p => p.proprietaire?.toLowerCase() !== currentUser?.toLowerCase())
 
   const pendingCount = inbox.filter(i => i.statut === 'en attente').length
 
@@ -33,11 +38,18 @@ function Projects() {
   const handleAjouter = (e) => {
     e.preventDefault()
     if (!nom) return
-    const nouveau = { id: Date.now(), nom, description, statut: 'À faire' }
-    setMesProjets([...mesProjets, nouveau])
-    setNom('')
-    setDescription('')
-    setShowForm(false)
+    fetch("http://localhost:5000/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom, description, proprietaire: currentUser })
+    })
+      .then(res => res.json())
+      .then(newProject => {
+        setProjets(prev => [...prev, newProject])
+        setNom('')
+        setDescription('')
+        setShowForm(false)
+      })
   }
 
   const statutColor = (statut) => {
@@ -74,7 +86,6 @@ function Projects() {
 
   return (
     <div style={styles.container}>
-      {/* INBOX TRIGGER (Since navbar is gone, keeping this accessible within the content or as a floating element) */}
       <div style={styles.inboxWrapper}>
         <button style={styles.bellBtn} onClick={() => setInboxOpen(!inboxOpen)}>
           🔔 Invitations
@@ -100,15 +111,11 @@ function Projects() {
                     <button
                       style={{ ...styles.inboxBtn, backgroundColor: '#C6EFCE', color: '#276221' }}
                       onClick={() => repondreInbox(inv.id, 'acceptée')}
-                    >
-                      Accepter
-                    </button>
+                    >Accepter</button>
                     <button
                       style={{ ...styles.inboxBtn, backgroundColor: '#FFE0E0', color: '#B91C1C' }}
                       onClick={() => repondreInbox(inv.id, 'refusée')}
-                    >
-                      Refuser
-                    </button>
+                    >Refuser</button>
                   </div>
                 ) : (
                   <span style={{
@@ -126,7 +133,6 @@ function Projects() {
       </div>
 
       <div style={styles.content}>
-        {/* SECTION 1 : MES PROJETS */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -169,7 +175,6 @@ function Projects() {
 
         <div style={styles.divider} />
 
-        {/* SECTION 2 : PROJETS COLLABORÉS */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
@@ -193,12 +198,9 @@ function Projects() {
 
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f0f4f8', padding: '20px' },
-  inboxWrapper: { 
-    maxWidth: '900px', 
-    margin: '0 auto 20px auto', 
-    display: 'flex', 
-    justifyContent: 'flex-end',
-    position: 'relative' 
+  inboxWrapper: {
+    maxWidth: '900px', margin: '0 auto 20px auto',
+    display: 'flex', justifyContent: 'flex-end', position: 'relative'
   },
   bellBtn: {
     backgroundColor: 'white', border: '1px solid #ddd', cursor: 'pointer',
@@ -206,17 +208,14 @@ const styles = {
     display: 'flex', alignItems: 'center', gap: '8px', color: '#1F4E79', fontWeight: 'bold'
   },
   bellBadge: {
-    backgroundColor: '#B91C1C', color: 'white',
-    fontSize: '10px', fontWeight: 'bold',
+    backgroundColor: '#B91C1C', color: 'white', fontSize: '10px', fontWeight: 'bold',
     width: '18px', height: '18px', borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   inboxDropdown: {
-    position: 'absolute', top: '45px', right: '0',
-    backgroundColor: 'white', borderRadius: '12px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-    width: '320px', zIndex: 100,
-    border: '1px solid #e0e7ef', overflow: 'hidden',
+    position: 'absolute', top: '45px', right: '0', backgroundColor: 'white',
+    borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+    width: '320px', zIndex: 100, border: '1px solid #e0e7ef', overflow: 'hidden',
   },
   inboxHeader: {
     padding: '14px 18px', fontWeight: '700', fontSize: '14px',
@@ -274,9 +273,8 @@ const styles = {
   cardDesc: { color: '#666', fontSize: '14px', margin: 0 },
   btnVoir: { color: '#2E75B6', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold' },
   empty: {
-    textAlign: 'center', color: '#999', padding: '32px',
-    backgroundColor: 'white', borderRadius: '12px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontSize: '14px',
+    textAlign: 'center', color: '#999', padding: '32px', backgroundColor: 'white',
+    borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontSize: '14px',
   },
 }
 
